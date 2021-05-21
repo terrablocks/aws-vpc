@@ -154,12 +154,9 @@ resource "aws_s3_bucket" "this" {
     }
   }
 
-  dynamic "versioning" {
-    for_each = var.s3_versioning
-    content {
-      enabled    = versioning.enabled
-      mfa_delete = versioning.mfa_delete
-    }
+  versioning {
+    enabled    = var.s3_enable_versioning
+    mfa_delete = var.s3_enable_mfa_delete
   }
 
   policy = <<POLICY

@@ -87,13 +87,16 @@ variable "s3_kms_key" {
   description = "Alias/ID/ARN of KMS key to use for encrypting S3 bucket content"
 }
 
-variable "s3_versioning" {
-  type = map(bool)
-  default = {
-    enabled    = false
-    mfa_delete = false
-  }
-  description = "Enable version and/or MFA delete for current/previous objects"
+variable "s3_enable_versioning" {
+  type        = bool
+  default     = false
+  description = "Enable versioning for S3 bucket used to store flow logs"
+}
+
+variable "s3_enable_mfa_delete" {
+  type        = bool
+  default     = false
+  description = "Enable MFA delete for S3 bucket used to store flow logs"
 }
 
 variable "create_private_zone" {
