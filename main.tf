@@ -177,6 +177,29 @@ resource "aws_s3_bucket" "this" {
           "aws:SecureTransport": "false"
         }
       }
+    },
+    {
+      "Sid": "AWSLogDeliveryWrite",
+      "Action": "s3:PutObject",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "delivery.logs.amazonaws.com"
+      },
+      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}/AWSLogs/${local.account_id}/*",
+      "Condition": {
+        "StringEquals": {
+          "s3:x-amz-acl": "bucket-owner-full-control"
+        }
+      }
+    },
+    {
+      "Sid": "AWSLogDeliveryAclCheck",
+      "Action": "s3:GetBucketAcl",
+      "Effect": "Allow",
+      "Principal": {
+        "Service": "delivery.logs.amazonaws.com"
+      },
+      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}"
     }
   ]
 }
