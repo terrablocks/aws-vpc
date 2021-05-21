@@ -1,3 +1,5 @@
+data "aws_caller_identity" "current" {}
+
 # Create VPC
 resource "aws_vpc" "this" {
   # checkov:skip=CKV2_AWS_12: All traffic restricted from within the security group
@@ -185,7 +187,7 @@ resource "aws_s3_bucket" "this" {
       "Principal": {
         "Service": "delivery.logs.amazonaws.com"
       },
-      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}/AWSLogs/${local.account_id}/*",
+      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
       "Condition": {
         "StringEquals": {
           "s3:x-amz-acl": "bucket-owner-full-control"
