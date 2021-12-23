@@ -210,8 +210,8 @@ resource "aws_s3_bucket_public_access_block" "this" {
 # Create VPC flow logs
 resource "aws_flow_log" "this" {
   count                = var.create_flow_logs ? 1 : 0
-  iam_role_arn         = var.flow_logs_destination == "cloud-watch-logs" ? aws_iam_role.this[0].arn : ""
-  log_destination      = var.flow_logs_destination == "cloud-watch-logs" ? aws_cloudwatch_log_group.this[0].arn : aws_s3_bucket.this[0].arn
+  iam_role_arn         = var.flow_logs_destination == "cloud-watch-logs" ? aws_iam_role.this[0].arn : null
+  log_destination      = var.flow_logs_destination == "cloud-watch-logs" ? aws_cloudwatch_log_group.this[0].arn : (var.flow_logs_bucket_arn == "" ? aws_s3_bucket.this[0].arn : var.flow_logs_bucket_arn)
   log_destination_type = var.flow_logs_destination
   traffic_type         = "ALL"
   vpc_id               = aws_vpc.this.id
