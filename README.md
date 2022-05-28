@@ -1,13 +1,12 @@
 # Create a VPC for deploying your workload
 
-![License](https://img.shields.io/github/license/terrablocks/aws-vpc?style=for-the-badge) ![Tests](https://img.shields.io/github/workflow/status/terrablocks/aws-vpc/tests/master?label=Test&style=for-the-badge) ![Checkov](https://img.shields.io/github/workflow/status/terrablocks/aws-vpc/checkov/master?label=Checkov&style=for-the-badge) ![Commit](https://img.shields.io/github/last-commit/terrablocks/aws-vpc?style=for-the-badge) ![Release](https://img.shields.io/github/v/release/terrablocks/aws-vpc?style=for-the-badge)
+![License](https://img.shields.io/github/license/terrablocks/aws-vpc?style=for-the-badge) ![Tests](https://img.shields.io/github/workflow/status/terrablocks/aws-vpc/tests/main?label=Test&style=for-the-badge) ![Checkov](https://img.shields.io/github/workflow/status/terrablocks/aws-vpc/checkov/main?label=Checkov&style=for-the-badge) ![Commit](https://img.shields.io/github/last-commit/terrablocks/aws-vpc?style=for-the-badge) ![Release](https://img.shields.io/github/v/release/terrablocks/aws-vpc?style=for-the-badge)
 
 This terraform module will deploy the following services:
 - VPC
   - Internet Gateway
   - Flow Logs (Optional)
-- CloudWatch
-  - Log Group (Optional)
+- CloudWatch Log Group (Optional)
 - S3 Bucket (Optional)
 - IAM Role (Optional)
 - Route53
@@ -27,8 +26,8 @@ module "vpc" {
 
 | Name | Version |
 |------|---------|
-| terraform | >= 0.13 |
-| aws | >= 3.37.0 |
+| terraform | >= 0.15 |
+| aws | >= 4.0.0 |
 | random | >= 3.1.0 |
 
 ## Inputs
@@ -50,7 +49,8 @@ module "vpc" {
 | flow_logs_bucket_arn | ARN of S3 to use for storing VPC flow logs | `string` | `""` | no |
 | s3_force_destroy | Delete bucket content before deleting bucket | `bool` | `true` | no |
 | s3_kms_key | Alias/ID/ARN of KMS key to use for encrypting S3 bucket content | `string` | `"alias/aws/s3"` | no |
-| s3_versioning | Enable version and/or MFA delete for current/previous objects | `map(bool)` | <pre>{<br>  "enabled": false,<br>  "mfa_delete": false<br>}</pre> | no |
+| s3_versioning_status | The versioning status of the S3 bucket. Valid values: `Enabled`, `Suspended` or `Disabled`. **Note:** Disabled can only be used if the versioning was never enabled on the bucket | `string` | `"Disabled"` | no |
+| s3_enable_mfa_delete | Enable MFA delete for S3 bucket used to store flow logs | `bool` | `false` | no |
 | create_private_zone | Whether to create private hosted zone for VPC | `bool` | `false` | no |
 | private_zone_domain | Domain name to be used for private hosted zone | `string` | `"server.internal.com"` | no |
 | tags | Map of key-value pair to associate with resources | `map(string)` | `{}` | no |

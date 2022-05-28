@@ -130,72 +130,35 @@ resource "aws_s3_bucket" "this" {
   # checkov:skip=CKV_AWS_21: Enabling versioning depends on user
   count         = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
   bucket        = "${var.network_name}-flow-logs-${random_id.this.hex}"
-  acl           = "private"
   force_destroy = var.s3_force_destroy
-
-  server_side_encryption_configuration {
-    rule {
-      apply_server_side_encryption_by_default {
-        sse_algorithm     = var.s3_kms_key == "alias/aws/s3" ? "AES256" : "aws:kms"
-        kms_master_key_id = var.s3_kms_key == "alias/aws/s3" ? null : data.aws_kms_key.s3.id
-      }
-    }
-  }
-
-  versioning {
-    enabled    = var.s3_enable_versioning
-    mfa_delete = var.s3_enable_mfa_delete
-  }
-
-  policy = <<POLICY
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Sid": "AllowSSLRequestsOnly",
-      "Effect": "Deny",
-      "Principal": "*",
-      "Action": "s3:*",
-      "Resource": [
-        "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}",
-        "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}/*"
-      ],
-      "Condition": {
-        "Bool": {
-          "aws:SecureTransport": "false"
-        }
-      }
-    },
-    {
-      "Sid": "AWSLogDeliveryWrite",
-      "Action": "s3:PutObject",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "delivery.logs.amazonaws.com"
-      },
-      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}/AWSLogs/${data.aws_caller_identity.current.account_id}/*",
-      "Condition": {
-        "StringEquals": {
-          "s3:x-amz-acl": "bucket-owner-full-control"
-        }
-      }
-    },
-    {
-      "Sid": "AWSLogDeliveryAclCheck",
-      "Action": "s3:GetBucketAcl",
-      "Effect": "Allow",
-      "Principal": {
-        "Service": "delivery.logs.amazonaws.com"
-      },
-      "Resource": "arn:aws:s3:::${var.network_name}-flow-logs-${random_id.this.hex}"
-    }
-  ]
+  tags          = var.tags
 }
-POLICY
 
-  tags = merge({
-    Name = "${var.network_name}-flow-logs-${random_id.this.hex}"
-  }, var.tags)
+resource "aws_s3_bucket_acl" "this" {
+  count  = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
+  bucket = join(",", aws_s3_bucket.this.*.id)
+  acl    = "private"
+}
+
+resource "aws_s3_bucket_versioning" "this" {
+  count  = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
+  bucket = join(",", aws_s3_bucket.this.*.id)
+  versioning_configuration {
+    status     = var.s3_versioning_status
+    mfa_delete = var.s3_enable_mfa_delete ? "Enabled" : "Disabled"
+  }
+}
+
+resource "aws_s3_bucket_server_side_encryption_configuration" "this" {
+  count  = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
+  bucket = join(",", aws_s3_bucket.this.*.id)
+
+  rule {
+    apply_server_side_encryption_by_default {
+      sse_algorithm     = var.s3_kms_key == "alias/aws/s3" ? "AES256" : "aws:kms"
+      kms_master_key_id = var.s3_kms_key == "alias/aws/s3" ? null : data.aws_kms_key.s3.id
+    }
+  }
 }
 
 resource "aws_s3_bucket_public_access_block" "this" {
@@ -205,6 +168,67 @@ resource "aws_s3_bucket_public_access_block" "this" {
   block_public_policy     = true
   ignore_public_acls      = true
   restrict_public_buckets = true
+}
+
+data "aws_iam_policy_document" "bucket" {
+  count = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
+  statement {
+    sid = "AWSLogDeliveryWrite"
+    actions = [
+      "s3:PutObject"
+    ]
+    resources = [
+      "${join(",", aws_s3_bucket.this.*.arn)}/*"
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["delivery.logs.amazonaws.com"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "s3:x-amz-acl"
+      values   = ["bucket-owner-full-control"]
+    }
+  }
+
+  statement {
+    sid = "AWSLogDeliveryAclCheck"
+    actions = [
+      "s3:GetBucketAcl"
+    ]
+    resources = [
+      join(",", aws_s3_bucket.this.*.arn)
+    ]
+    principals {
+      type        = "Service"
+      identifiers = ["delivery.logs.amazonaws.com"]
+    }
+  }
+
+  statement {
+    sid     = "AllowSSLRequestsOnly"
+    effect  = "Deny"
+    actions = ["s3:*"]
+    resources = [
+      join(",", aws_s3_bucket.this.*.arn),
+      "${join(",", aws_s3_bucket.this.*.arn)}/*"
+    ]
+    principals {
+      type        = "*"
+      identifiers = ["*"]
+    }
+    condition {
+      test     = "Bool"
+      variable = "aws:SecureTransport"
+      values   = ["false"]
+    }
+  }
+}
+
+resource "aws_s3_bucket_policy" "this" {
+  count  = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
+  bucket = join(",", aws_s3_bucket.this.*.id)
+  policy = join(",", data.aws_iam_policy_document.bucket.*.json)
 }
 
 # Create VPC flow logs

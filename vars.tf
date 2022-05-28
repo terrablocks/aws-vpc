@@ -87,10 +87,10 @@ variable "s3_kms_key" {
   description = "Alias/ID/ARN of KMS key to use for encrypting S3 bucket content"
 }
 
-variable "s3_enable_versioning" {
-  type        = bool
-  default     = false
-  description = "Enable versioning for S3 bucket used to store flow logs"
+variable "s3_versioning_status" {
+  type        = string
+  default     = "Disabled"
+  description = "The versioning status of the S3 bucket. Valid values: `Enabled`, `Suspended` or `Disabled`. **Note:** Disabled can only be used if the versioning was never enabled on the bucket"
 }
 
 variable "s3_enable_mfa_delete" {
