@@ -129,6 +129,8 @@ resource "aws_s3_bucket" "this" {
   # checkov:skip=CKV_AWS_145: Using KMS key for SSE depends on user
   # checkov:skip=CKV_AWS_52: Enabling MFA delete depends on user
   # checkov:skip=CKV_AWS_21: Enabling versioning depends on user
+  # checkov:skip=CKV2_AWS_61: Lifecycle configuration depends on user
+  # checkov:skip=CKV2_AWS_62: Event notifications depends on user
   count         = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
   bucket        = "${var.network_name}-flow-logs-${random_id.this.hex}"
   force_destroy = var.s3_force_destroy
@@ -261,6 +263,8 @@ resource "aws_flow_log" "this" {
 
 # Create private hosted zone
 resource "aws_route53_zone" "private" {
+  # checkov:skip=CKV2_AWS_38: Enabling DNSSEC depends on user
+  # checkov:skip=CKV2_AWS_39: Enabling query logging depends on user
   count = var.create_private_zone == true ? 1 : 0
   name  = var.private_zone_domain
 
