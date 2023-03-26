@@ -22,16 +22,18 @@ resource "aws_vpc_ipv4_cidr_block_association" "this" {
   cidr_block = var.additional_cidr_blocks[count.index]
 }
 
+data "aws_vpc" "this" {
+  id = aws_vpc.this.id
+}
+
 resource "aws_default_security_group" "this" {
   vpc_id = aws_vpc.this.id
+  tags   = var.tags
 }
 
 resource "aws_default_network_acl" "this" {
   default_network_acl_id = aws_vpc.this.default_network_acl_id
-}
-
-data "aws_vpc" "this" {
-  id = aws_vpc.this.id
+  tags                   = var.tags
 }
 
 # Create internet gateway
@@ -70,7 +72,6 @@ resource "aws_iam_role" "this" {
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "",
       "Effect": "Allow",
       "Principal": {
         "Service": "vpc-flow-logs.amazonaws.com"
@@ -128,16 +129,21 @@ resource "aws_s3_bucket" "this" {
   # checkov:skip=CKV_AWS_145: Using KMS key for SSE depends on user
   # checkov:skip=CKV_AWS_52: Enabling MFA delete depends on user
   # checkov:skip=CKV_AWS_21: Enabling versioning depends on user
+  # checkov:skip=CKV2_AWS_61: Lifecycle configuration depends on user
+  # checkov:skip=CKV2_AWS_62: Event notifications depends on user
   count         = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
   bucket        = "${var.network_name}-flow-logs-${random_id.this.hex}"
   force_destroy = var.s3_force_destroy
   tags          = var.tags
 }
 
-resource "aws_s3_bucket_acl" "this" {
+resource "aws_s3_bucket_ownership_controls" "this" {
   count  = var.create_flow_logs && var.flow_logs_destination == "s3" && var.flow_logs_bucket_arn == "" ? 1 : 0
   bucket = join(",", aws_s3_bucket.this.*.id)
-  acl    = "private"
+
+  rule {
+    object_ownership = "BucketOwnerEnforced"
+  }
 }
 
 resource "aws_s3_bucket_versioning" "this" {
@@ -237,8 +243,18 @@ resource "aws_flow_log" "this" {
   iam_role_arn         = var.flow_logs_destination == "cloud-watch-logs" ? aws_iam_role.this[0].arn : null
   log_destination      = var.flow_logs_destination == "cloud-watch-logs" ? aws_cloudwatch_log_group.this[0].arn : (var.flow_logs_bucket_arn == "" ? aws_s3_bucket.this[0].arn : var.flow_logs_bucket_arn)
   log_destination_type = var.flow_logs_destination
+  log_format           = var.flow_logs_log_format
   traffic_type         = "ALL"
   vpc_id               = aws_vpc.this.id
+
+  dynamic "destination_options" {
+    for_each = var.create_flow_logs && var.flow_logs_destination == "s3" ? [0] : []
+    content {
+      file_format                = var.flow_logs_s3_file_format
+      hive_compatible_partitions = var.flow_logs_s3_hive_compatible_partitions
+      per_hour_partition         = var.flow_logs_s3_per_hour_partition
+    }
+  }
 
   tags = merge({
     Name = "${var.network_name}-flow-logs"
@@ -247,6 +263,8 @@ resource "aws_flow_log" "this" {
 
 # Create private hosted zone
 resource "aws_route53_zone" "private" {
+  # checkov:skip=CKV2_AWS_38: Enabling DNSSEC depends on user
+  # checkov:skip=CKV2_AWS_39: Enabling query logging depends on user
   count = var.create_private_zone == true ? 1 : 0
   name  = var.private_zone_domain
 

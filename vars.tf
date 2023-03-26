@@ -51,6 +51,12 @@ variable "flow_logs_destination" {
   description = "Destination to store VPC flow logs. Possible values: s3, cloud-watch-logs"
 }
 
+variable "flow_logs_log_format" {
+  type        = string
+  default     = null
+  description = "Specify the fields using the $${field-id} format, separated by spaces to include in the flow log record. E.g: $${version} $${account-id}. Leave it to `null` to use the AWS default format. Refer to [AWS doc](https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html#flow-logs-fields) to learn what all fields can be included in the flow logs"
+}
+
 variable "cw_log_group_kms_key" {
   type        = string
   default     = null
@@ -59,7 +65,7 @@ variable "cw_log_group_kms_key" {
 
 variable "flow_logs_retention" {
   type        = number
-  default     = 0
+  default     = 90
   description = "Time period for which you want to retain VPC flow logs in CloudWatch log group. Default is 0 which means logs never expire. Possible values are 1, 3, 5, 7, 14, 30, 60, 90, 120, 150, 180, 365, 400, 545, 731, 1827, 3653"
 }
 
@@ -73,6 +79,24 @@ variable "flow_logs_bucket_arn" {
   type        = string
   default     = ""
   description = "ARN of S3 to use for storing VPC flow logs"
+}
+
+variable "flow_logs_s3_file_format" {
+  type        = string
+  default     = "plain-text"
+  description = "The format of log file delivered to the S3 bucket. **Valid values:** plain-text, parquet"
+}
+
+variable "flow_logs_s3_hive_compatible_partitions" {
+  type        = bool
+  default     = false
+  description = "Whether to use Hive-compatible S3 prefixes to simplify the loading of new data into your Hive-compatible tools"
+}
+
+variable "flow_logs_s3_per_hour_partition" {
+  type        = bool
+  default     = true
+  description = "Partition your logs per hour to reduce your query costs and get faster response if you have a large volume of logs and typically run queries targeted to a specific hour timeframe. Setting it to `false` will partition logs every 24 hours"
 }
 
 variable "s3_force_destroy" {
